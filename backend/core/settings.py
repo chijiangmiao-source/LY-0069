@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'apps.common',
     'apps.auth_app',
     'apps.programs',
     'apps.props',
