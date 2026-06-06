@@ -357,8 +357,7 @@ const handleResize = () => {
 
 const fetchData = async () => {
   try {
-    const response = await getDashboardData() as { data: DashboardData }
-    const data = response.data
+    const data = await getDashboardData() as DashboardData
 
     tourFlowStats.total_loading_count = data.tour_flow_stats.total_loading_count
     tourFlowStats.total_unloading_count = data.tour_flow_stats.total_unloading_count

@@ -59,6 +59,33 @@
     </el-card>
 
     <el-dialog
+      v-model="viewDialogVisible"
+      title="报废申请详情"
+      width="560px"
+      destroy-on-close
+    >
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="道具编号">{{ currentRecord.prop_code }}</el-descriptions-item>
+        <el-descriptions-item label="道具名称">{{ currentRecord.prop_name }}</el-descriptions-item>
+        <el-descriptions-item label="申请人">{{ currentRecord.applicant }}</el-descriptions-item>
+        <el-descriptions-item label="申请日期">{{ currentRecord.apply_date }}</el-descriptions-item>
+        <el-descriptions-item label="审批状态">
+          <el-tag :type="getStatusType(currentRecord.status || '')">
+            {{ getStatusText(currentRecord.status || '') }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="审批人">{{ currentRecord.approver || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="审批日期">{{ currentRecord.approve_date || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ currentRecord.created_at }}</el-descriptions-item>
+        <el-descriptions-item label="报废原因" :span="2">{{ currentRecord.reason }}</el-descriptions-item>
+        <el-descriptions-item label="审批意见" :span="2">{{ currentRecord.approve_remark || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="viewDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
       v-model="approveDialogVisible"
       :title="`${approveAction === 'approve' ? '批准' : '驳回'}报废申请`"
       width="560px"
@@ -126,6 +153,7 @@ import type { ScrapApplication } from '@/types'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const viewDialogVisible = ref(false)
 const approveDialogVisible = ref(false)
 const approveAction = ref<'approve' | 'reject'>('approve')
 const formRef = ref<FormInstance>()
@@ -242,6 +270,7 @@ const handleSubmitApprove = async () => {
 
 const handleView = (row: ScrapApplication) => {
   currentRecord.value = row
+  viewDialogVisible.value = true
 }
 
 onMounted(() => {

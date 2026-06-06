@@ -95,8 +95,9 @@ def create_loading(request, data: LoadingIn):
     except Prop.DoesNotExist:
         raise HttpError(400, '道具不存在')
 
-    if prop.scrap_status in ('scrapped', 'approved'):
-        raise HttpError(400, f'道具「{prop.code} {prop.name}」已报废，不可装车')
+    if prop.scrap_status in ('scrapped', 'approved', 'pending'):
+        scrap_msg = '已报废' if prop.scrap_status in ('scrapped', 'approved') else '报废审批中'
+        raise HttpError(400, f'道具「{prop.code} {prop.name}」{scrap_msg}，不可装车')
 
     today = date.today()
     if prop.next_maintenance_date and prop.next_maintenance_date < today:
@@ -148,8 +149,9 @@ def update_loading(request, id: int, data: LoadingIn):
     except Prop.DoesNotExist:
         raise HttpError(400, '道具不存在')
 
-    if prop.scrap_status in ('scrapped', 'approved'):
-        raise HttpError(400, f'道具「{prop.code} {prop.name}」已报废，不可装车')
+    if prop.scrap_status in ('scrapped', 'approved', 'pending'):
+        scrap_msg = '已报废' if prop.scrap_status in ('scrapped', 'approved') else '报废审批中'
+        raise HttpError(400, f'道具「{prop.code} {prop.name}」{scrap_msg}，不可装车')
 
     today = date.today()
     if prop.next_maintenance_date and prop.next_maintenance_date < today:
