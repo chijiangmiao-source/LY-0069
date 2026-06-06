@@ -49,6 +49,10 @@
           <el-icon><Delete /></el-icon>
           <span>报废管理</span>
         </el-menu-item>
+        <el-menu-item index="/tours">
+          <el-icon><Calendar /></el-icon>
+          <span>巡演任务</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -81,7 +85,8 @@ import {
   Warning,
   User,
   Tools,
-  Delete
+  Delete,
+  Calendar
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

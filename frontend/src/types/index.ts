@@ -143,10 +143,60 @@ export interface HighLossProgram {
   prop_count: number
 }
 
+export interface TourTaskVehicle {
+  id: number
+  vehicle_id: number
+  vehicle_code: string
+  vehicle_model: string
+}
+
+export interface TourTaskProp {
+  id: number
+  prop_id: number
+  prop_code: string
+  prop_name: string
+  quantity: number
+}
+
+export interface TourTask {
+  id: number
+  program_id: number
+  program_name: string
+  performance_date: string
+  city: string
+  venue: string
+  person_in_charge: string
+  start_date: string
+  end_date: string
+  status: string
+  execution_status: string
+  abnormal_situation?: string
+  completion_result?: string
+  remark?: string
+  vehicles: TourTaskVehicle[]
+  props: TourTaskProp[]
+  created_at: string
+  updated_at: string
+}
+
+export interface TourTaskStats {
+  future_tasks_count: number
+  in_progress_tasks_count: number
+  abnormal_tasks_count: number
+}
+
+export interface ProgramScheduleRank {
+  program_name: string
+  task_count: number
+  upcoming_count: number
+}
+
 export interface DashboardData {
   vehicle_load_rates: VehicleLoadRate[]
   program_prop_dist: ProgramPropDist[]
   tour_flow_stats: TourFlowStats
   maintenance_stats: MaintenanceStats
   high_loss_programs: HighLossProgram[]
+  tour_task_stats: TourTaskStats
+  program_schedule_rank: ProgramScheduleRank[]
 }

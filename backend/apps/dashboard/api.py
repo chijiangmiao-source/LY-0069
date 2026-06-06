@@ -2,7 +2,10 @@ from ninja import Router
 from django.db.models import Count, Sum, Q
 from datetime import date, timedelta
 
-from .schemas import DashboardData, VehicleLoadRate, ProgramPropDist, TourFlowStats, MaintenanceStats, HighLossProgram
+from .schemas import (
+    DashboardData, VehicleLoadRate, ProgramPropDist, TourFlowStats,
+    MaintenanceStats, HighLossProgram, TourTaskStats, ProgramScheduleRank
+)
 from apps.auth_app.auth import JWTAuth
 from apps.vehicles.models import Vehicle
 from apps.props.models import Prop
@@ -16,6 +19,11 @@ except ImportError:
     LoadingRecord = None
     UnloadingRecord = None
     DamageRecord = None
+
+try:
+    from apps.tours.models import TourTask
+except ImportError:
+    TourTask = None
 
 
 @router.get('', response=DashboardData)
@@ -114,10 +122,51 @@ def get_dashboard_data(request):
         except Exception:
             pass
 
+    future_tasks_count = 0
+    in_progress_tasks_count = 0
+    abnormal_tasks_count = 0
+    program_schedule_rank = []
+
+    if TourTask is not None:
+        try:
+            future_tasks_count = TourTask.objects.filter(
+                status__in=['pending', 'in_progress'],
+                start_date__gte=today
+            ).count()
+            in_progress_tasks_count = TourTask.objects.filter(status='in_progress').count()
+            abnormal_tasks_count = TourTask.objects.filter(status='abnormal').count()
+
+            rank_stats = TourTask.objects.values('program__name').annotate(
+                task_count=Count('id'),
+            ).order_by('-task_count')[:10]
+
+            for item in rank_stats:
+                p_name = item['program__name'] or '未分类'
+                upcoming_count = TourTask.objects.filter(
+                    program__name=p_name,
+                    status__in=['pending', 'in_progress'],
+                    start_date__gte=today
+                ).count()
+                program_schedule_rank.append(ProgramScheduleRank(
+                    program_name=p_name,
+                    task_count=item['task_count'],
+                    upcoming_count=upcoming_count,
+                ))
+        except Exception:
+            pass
+
+    tour_task_stats = TourTaskStats(
+        future_tasks_count=future_tasks_count,
+        in_progress_tasks_count=in_progress_tasks_count,
+        abnormal_tasks_count=abnormal_tasks_count,
+    )
+
     return DashboardData(
         vehicle_load_rates=vehicle_load_rates,
         program_prop_dist=program_prop_dist,
         tour_flow_stats=tour_flow_stats,
         maintenance_stats=maintenance_stats,
         high_loss_programs=high_loss_programs,
+        tour_task_stats=tour_task_stats,
+        program_schedule_rank=program_schedule_rank,
     )

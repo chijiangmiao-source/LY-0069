@@ -33,9 +33,23 @@ class HighLossProgram(Schema):
     prop_count: int
 
 
+class TourTaskStats(Schema):
+    future_tasks_count: int
+    in_progress_tasks_count: int
+    abnormal_tasks_count: int
+
+
+class ProgramScheduleRank(Schema):
+    program_name: str
+    task_count: int
+    upcoming_count: int
+
+
 class DashboardData(Schema):
     vehicle_load_rates: List[VehicleLoadRate]
     program_prop_dist: List[ProgramPropDist]
     tour_flow_stats: TourFlowStats
     maintenance_stats: MaintenanceStats
     high_loss_programs: List[HighLossProgram]
+    tour_task_stats: TourTaskStats
+    program_schedule_rank: List[ProgramScheduleRank]

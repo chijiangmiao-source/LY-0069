@@ -8,6 +8,7 @@ from apps.props.api import router as props_router, maintenance_router as props_m
 from apps.vehicles.api import router as vehicles_router
 from apps.loading.api import loading_router, unloading_router, damage_router
 from apps.dashboard.api import router as dashboard_router
+from apps.tours.api import router as tours_router
 
 api = NinjaAPI(title='马戏团道具装车与巡演归库系统 API', version='1.0.0')
 api.add_router('/auth', auth_router)
@@ -19,6 +20,7 @@ api.add_router('/vehicles', vehicles_router)
 api.add_router('/loading', loading_router)
 api.add_router('/unloading', unloading_router)
 api.add_router('/damage', damage_router)
+api.add_router('/tours', tours_router)
 api.add_router('/dashboard', dashboard_router)
 
 

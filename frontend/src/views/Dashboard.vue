@@ -56,7 +56,49 @@
     </el-row>
 
     <el-row :gutter="20" class="stats-row">
-      <el-col :span="12">
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card future-task-card">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon :size="36"><Calendar /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">未来巡演任务数</div>
+              <div class="stat-value">{{ tourTaskStats.future_tasks_count }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card in-progress-card">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon :size="36"><VideoPlay /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">执行中任务数</div>
+              <div class="stat-value">{{ tourTaskStats.in_progress_tasks_count }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card abnormal-card">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon :size="36"><WarningFilled /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">异常任务数</div>
+              <div class="stat-value danger-value">{{ tourTaskStats.abnormal_tasks_count }}</div>
+              <div class="stat-tip" v-if="tourTaskStats.abnormal_tasks_count > 0">
+                请及时处理异常任务
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
         <el-card shadow="hover" class="stat-card warning-card">
           <div class="stat-content">
             <div class="stat-icon maintenance-due-icon">
@@ -72,6 +114,9 @@
           </div>
         </el-card>
       </el-col>
+    </el-row>
+
+    <el-row :gutter="20" class="stats-row">
       <el-col :span="12">
         <el-card shadow="hover" class="stat-card danger-card">
           <div class="stat-content">
@@ -114,7 +159,7 @@
     </el-row>
 
     <el-row :gutter="20" class="charts-row">
-      <el-col :span="24">
+      <el-col :span="12">
         <el-card shadow="hover" class="chart-card">
           <template #header>
             <div class="chart-header">
@@ -122,6 +167,16 @@
             </div>
           </template>
           <div ref="lossChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+      <el-col :span="12">
+        <el-card shadow="hover" class="chart-card">
+          <template #header>
+            <div class="chart-header">
+              <span>剧目排期热度排行（Top 10）</span>
+            </div>
+          </template>
+          <div ref="scheduleChartRef" class="chart-container"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -132,17 +187,25 @@
 import { ref, onMounted, onBeforeUnmount, reactive, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
-import { Upload, Download, Van, Tools, Warning, Delete } from '@element-plus/icons-vue'
+import {
+  Upload, Download, Van, Tools, Warning, Delete,
+  Calendar, VideoPlay, WarningFilled
+} from '@element-plus/icons-vue'
 import { getDashboardData } from '@/api/dashboard'
-import type { DashboardData, TourFlowStats, VehicleLoadRate, ProgramPropDist, MaintenanceStats, HighLossProgram } from '@/types'
+import type {
+  DashboardData, TourFlowStats, VehicleLoadRate, ProgramPropDist,
+  MaintenanceStats, HighLossProgram, TourTaskStats, ProgramScheduleRank
+} from '@/types'
 
 const barChartRef = ref<HTMLElement | null>(null)
 const pieChartRef = ref<HTMLElement | null>(null)
 const lossChartRef = ref<HTMLElement | null>(null)
+const scheduleChartRef = ref<HTMLElement | null>(null)
 
 let barChartInstance: ECharts | null = null
 let pieChartInstance: ECharts | null = null
 let lossChartInstance: ECharts | null = null
+let scheduleChartInstance: ECharts | null = null
 
 const tourFlowStats = reactive<TourFlowStats>({
   total_loading_count: 0,
@@ -156,9 +219,16 @@ const maintenanceStats = reactive<MaintenanceStats>({
   scrap_proportion: 0
 })
 
+const tourTaskStats = reactive<TourTaskStats>({
+  future_tasks_count: 0,
+  in_progress_tasks_count: 0,
+  abnormal_tasks_count: 0
+})
+
 const vehicleLoadRates = ref<VehicleLoadRate[]>([])
 const programPropDist = ref<ProgramPropDist[]>([])
 const highLossPrograms = ref<HighLossProgram[]>([])
+const programScheduleRank = ref<ProgramScheduleRank[]>([])
 
 const initBarChart = () => {
   if (!barChartRef.value) return
@@ -176,9 +246,7 @@ const initBarChart = () => {
   const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      },
+      axisPointer: { type: 'shadow' },
       formatter: (params: any) => {
         const data = params[0]
         const vehicle = vehicleLoadRates.value[data.dataIndex]
@@ -192,41 +260,27 @@ const initBarChart = () => {
       }
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
+      left: '3%', right: '4%', bottom: '3%', top: '10%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: xAxisData,
-      axisLabel: {
-        interval: 0,
-        rotate: 30
-      }
+      axisLabel: { interval: 0, rotate: 30 }
     },
     yAxis: {
       type: 'value',
       name: '装载率(%)',
       max: 150,
-      axisLabel: {
-        formatter: '{value}%'
-      }
+      axisLabel: { formatter: '{value}%' }
     },
-    series: [
-      {
-        name: '装载率',
-        type: 'bar',
-        data: seriesData,
-        barWidth: '50%',
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}%'
-        }
-      }
-    ]
+    series: [{
+      name: '装载率',
+      type: 'bar',
+      data: seriesData,
+      barWidth: '50%',
+      label: { show: true, position: 'top', formatter: '{c}%' }
+    }]
   }
 
   barChartInstance.setOption(option)
@@ -243,41 +297,25 @@ const initPieChart = () => {
   }))
 
   const option: echarts.EChartsOption = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left',
-      top: 'center'
-    },
-    series: [
-      {
-        name: '道具数量',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['60%', '50%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: true,
-          formatter: '{b}: {c}'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: 16,
-            fontWeight: 'bold'
-          }
-        },
-        data: seriesData
-      }
-    ]
+    tooltip: { trigger: 'item', formatter: '{a} <br/>{b}: {c} ({d}%)' },
+    legend: { orient: 'vertical', left: 'left', top: 'center' },
+    series: [{
+      name: '道具数量',
+      type: 'pie',
+      radius: ['40%', '70%'],
+      center: ['60%', '50%'],
+      avoidLabelOverlap: false,
+      itemStyle: {
+        borderRadius: 10,
+        borderColor: '#fff',
+        borderWidth: 2
+      },
+      label: { show: true, formatter: '{b}: {c}' },
+      emphasis: {
+        label: { show: true, fontSize: 16, fontWeight: 'bold' }
+      },
+      data: seriesData
+    }]
   }
 
   pieChartInstance.setOption(option)
@@ -294,9 +332,7 @@ const initLossChart = () => {
   const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      },
+      axisPointer: { type: 'shadow' },
       formatter: (params: any) => {
         const data = params[0]
         const program = highLossPrograms.value[data.dataIndex]
@@ -308,51 +344,108 @@ const initLossChart = () => {
       }
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '10%',
+      left: '3%', right: '4%', bottom: '3%', top: '10%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: xAxisData,
-      axisLabel: {
-        interval: 0,
-        rotate: 30
+      axisLabel: { interval: 0, rotate: 30 }
+    },
+    yAxis: { type: 'value', name: '损耗数量' },
+    series: [{
+      name: '损耗数量',
+      type: 'bar',
+      data: seriesData,
+      barWidth: '50%',
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#ee0a24' },
+          { offset: 1, color: '#ff976a' }
+        ])
+      },
+      label: { show: true, position: 'top' }
+    }]
+  }
+
+  lossChartInstance.setOption(option)
+}
+
+const initScheduleChart = () => {
+  if (!scheduleChartRef.value) return
+
+  scheduleChartInstance = echarts.init(scheduleChartRef.value)
+
+  const xAxisData = programScheduleRank.value.map(item => item.program_name)
+  const totalData = programScheduleRank.value.map(item => item.task_count)
+  const upcomingData = programScheduleRank.value.map(item => item.upcoming_count)
+
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        const idx = params[0].dataIndex
+        const program = programScheduleRank.value[idx]
+        return `
+          <div>剧目：${program.program_name}</div>
+          <div>排期任务总数：${program.task_count}</div>
+          <div>未来待执行：${program.upcoming_count}</div>
+        `
       }
     },
-    yAxis: {
-      type: 'value',
-      name: '损耗数量'
+    legend: {
+      data: ['排期任务总数', '未来待执行数'],
+      top: 0
     },
+    grid: {
+      left: '3%', right: '4%', bottom: '3%', top: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: xAxisData,
+      axisLabel: { interval: 0, rotate: 30 }
+    },
+    yAxis: { type: 'value', name: '任务数' },
     series: [
       {
-        name: '损耗数量',
+        name: '排期任务总数',
         type: 'bar',
-        data: seriesData,
-        barWidth: '50%',
+        data: totalData,
+        barWidth: '35%',
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#ee0a24' },
-            { offset: 1, color: '#ff976a' }
+            { offset: 0, color: '#667eea' },
+            { offset: 1, color: '#764ba2' }
           ])
         },
-        label: {
-          show: true,
-          position: 'top'
-        }
+        label: { show: true, position: 'top' }
+      },
+      {
+        name: '未来待执行数',
+        type: 'bar',
+        data: upcomingData,
+        barWidth: '35%',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#13c2c2' },
+            { offset: 1, color: '#52c41a' }
+          ])
+        },
+        label: { show: true, position: 'top' }
       }
     ]
   }
 
-  lossChartInstance.setOption(option)
+  scheduleChartInstance.setOption(option)
 }
 
 const handleResize = () => {
   barChartInstance?.resize()
   pieChartInstance?.resize()
   lossChartInstance?.resize()
+  scheduleChartInstance?.resize()
 }
 
 const fetchData = async () => {
@@ -367,14 +460,20 @@ const fetchData = async () => {
     maintenanceStats.maintenance_overdue_count = data.maintenance_stats.maintenance_overdue_count
     maintenanceStats.scrap_proportion = data.maintenance_stats.scrap_proportion
 
+    tourTaskStats.future_tasks_count = data.tour_task_stats?.future_tasks_count ?? 0
+    tourTaskStats.in_progress_tasks_count = data.tour_task_stats?.in_progress_tasks_count ?? 0
+    tourTaskStats.abnormal_tasks_count = data.tour_task_stats?.abnormal_tasks_count ?? 0
+
     vehicleLoadRates.value = data.vehicle_load_rates
     programPropDist.value = data.program_prop_dist
     highLossPrograms.value = data.high_loss_programs
+    programScheduleRank.value = data.program_schedule_rank || []
 
     await nextTick()
     initBarChart()
     initPieChart()
     initLossChart()
+    initScheduleChart()
   } catch (error) {
     console.error('获取看板数据失败:', error)
   }
@@ -390,6 +489,7 @@ onBeforeUnmount(() => {
   barChartInstance?.dispose()
   pieChartInstance?.dispose()
   lossChartInstance?.dispose()
+  scheduleChartInstance?.dispose()
 })
 </script>
 
@@ -419,6 +519,33 @@ onBeforeUnmount(() => {
 .danger-card {
   background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
   border: 1px solid #ffa39e;
+}
+
+.future-task-card {
+  background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+  border: 1px solid #91d5ff;
+}
+
+.future-task-card .stat-icon {
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
+}
+
+.in-progress-card {
+  background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+  border: 1px solid #b7eb8f;
+}
+
+.in-progress-card .stat-icon {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+}
+
+.abnormal-card {
+  background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+  border: 1px solid #ffa39e;
+}
+
+.abnormal-card .stat-icon {
+  background: linear-gradient(135deg, #ff4d4f 0%, #ff7875 100%);
 }
 
 .stat-content {
@@ -493,11 +620,18 @@ onBeforeUnmount(() => {
 }
 
 .danger-card .stat-label,
-.warning-card .stat-label {
+.warning-card .stat-label,
+.abnormal-card .stat-label,
+.in-progress-card .stat-label,
+.future-task-card .stat-label {
   color: #606266;
 }
 
 .charts-row {
+  margin-bottom: 20px;
+}
+
+.charts-row:last-child {
   margin-bottom: 0;
 }
 

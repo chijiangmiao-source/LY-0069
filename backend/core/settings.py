@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     'apps.props',
     'apps.vehicles',
     'apps.loading',
+    'apps.tours',
     'apps.dashboard',
 ]
 
