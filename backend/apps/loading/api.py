@@ -75,6 +75,9 @@ def list_loading(request):
 @loading_router.post('/list', response=LoadingOut)
 @transaction.atomic
 def create_loading(request, data: LoadingIn):
+    if data.loading_quantity <= 0:
+        raise HttpError(400, '装车数量必须大于0')
+
     try:
         vehicle = Vehicle.objects.get(id=data.vehicle_id)
     except Vehicle.DoesNotExist:
@@ -116,6 +119,9 @@ def get_loading(request, id: int):
 @loading_router.put('/{id}', response=LoadingOut)
 @transaction.atomic
 def update_loading(request, id: int, data: LoadingIn):
+    if data.loading_quantity <= 0:
+        raise HttpError(400, '装车数量必须大于0')
+
     try:
         loading = LoadingRecord.objects.get(id=id)
     except LoadingRecord.DoesNotExist:
@@ -204,6 +210,9 @@ def list_unloading(request):
 @unloading_router.post('/list', response=UnloadingOut)
 @transaction.atomic
 def create_unloading(request, data: UnloadingIn):
+    if data.unloading_quantity <= 0:
+        raise HttpError(400, '卸车数量必须大于0')
+
     try:
         loading = LoadingRecord.objects.get(id=data.loading_id)
     except LoadingRecord.DoesNotExist:
@@ -219,6 +228,9 @@ def create_unloading(request, data: UnloadingIn):
         vehicle = Vehicle.objects.get(id=data.vehicle_id)
     except Vehicle.DoesNotExist:
         raise HttpError(400, '车辆不存在')
+
+    if vehicle.current_load - data.unloading_quantity < 0:
+        raise HttpError(400, f'卸车数量超过车辆当前装载量（当前装载: {vehicle.current_load}）')
 
     try:
         prop = Prop.objects.get(id=data.prop_id)
@@ -251,6 +263,9 @@ def get_unloading(request, id: int):
 @unloading_router.put('/{id}', response=UnloadingOut)
 @transaction.atomic
 def update_unloading(request, id: int, data: UnloadingIn):
+    if data.unloading_quantity <= 0:
+        raise HttpError(400, '卸车数量必须大于0')
+
     try:
         unloading = UnloadingRecord.objects.get(id=id)
     except UnloadingRecord.DoesNotExist:
@@ -280,6 +295,14 @@ def update_unloading(request, id: int, data: UnloadingIn):
     old_vehicle_id = unloading.vehicle_id
     old_prop_id = unloading.prop_id
     old_quantity = unloading.unloading_quantity
+
+    if old_vehicle_id != data.vehicle_id:
+        if vehicle.current_load - data.unloading_quantity < 0:
+            raise HttpError(400, f'卸车数量超过车辆当前装载量（当前装载: {vehicle.current_load}）')
+    else:
+        new_load = vehicle.current_load + old_quantity - data.unloading_quantity
+        if new_load < 0:
+            raise HttpError(400, f'调整后车辆装载量将为负数（调整后: {new_load}）')
 
     for attr, value in data.dict().items():
         setattr(unloading, attr, value)
@@ -317,6 +340,8 @@ def delete_unloading(request, id: int):
         raise HttpError(404, '卸车记录不存在')
 
     vehicle = unloading.vehicle
+    if vehicle.current_load + unloading.unloading_quantity > vehicle.capacity:
+        raise HttpError(400, f'删除该卸车记录将导致车辆装载量超过容量（当前: {vehicle.current_load}, 容量: {vehicle.capacity}）')
     vehicle.current_load += unloading.unloading_quantity
     vehicle.save()
 
@@ -337,6 +362,9 @@ def list_damage(request):
 @damage_router.post('/list', response=DamageOut)
 @transaction.atomic
 def create_damage(request, data: DamageIn):
+    if data.damage_quantity <= 0:
+        raise HttpError(400, '损耗数量必须大于0')
+
     if not data.damage_reason or data.damage_reason.strip() == '':
         raise HttpError(400, '损耗原因必须填写')
 
@@ -366,6 +394,9 @@ def get_damage(request, id: int):
 @damage_router.put('/{id}', response=DamageOut)
 @transaction.atomic
 def update_damage(request, id: int, data: DamageIn):
+    if data.damage_quantity <= 0:
+        raise HttpError(400, '损耗数量必须大于0')
+
     try:
         damage = DamageRecord.objects.get(id=id)
     except DamageRecord.DoesNotExist:

@@ -50,6 +50,8 @@ class Vehicle(models.Model):
         verbose_name_plural = '车辆'
 
     def clean(self):
+        if self.current_load < 0:
+            raise ValidationError({'current_load': '当前装载量不能为负数'})
         if self.current_load > self.capacity:
             raise ValidationError({'current_load': '当前装载量不能超过承载容量'})
 
