@@ -21,7 +21,21 @@ class TourFlowStats(Schema):
     total_tour_count: int
 
 
+class MaintenanceStats(Schema):
+    maintenance_due_count: int
+    maintenance_overdue_count: int
+    scrap_proportion: float
+
+
+class HighLossProgram(Schema):
+    program_name: str
+    total_damage_quantity: int
+    prop_count: int
+
+
 class DashboardData(Schema):
     vehicle_load_rates: List[VehicleLoadRate]
     program_prop_dist: List[ProgramPropDist]
     tour_flow_stats: TourFlowStats
+    maintenance_stats: MaintenanceStats
+    high_loss_programs: List[HighLossProgram]

@@ -41,6 +41,14 @@
           <el-icon><Warning /></el-icon>
           <span>损耗记录</span>
         </el-menu-item>
+        <el-menu-item index="/maintenance">
+          <el-icon><Tools /></el-icon>
+          <span>维保记录</span>
+        </el-menu-item>
+        <el-menu-item index="/scrap">
+          <el-icon><Delete /></el-icon>
+          <span>报废管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -71,7 +79,9 @@ import {
   Upload,
   Download,
   Warning,
-  User
+  User,
+  Tools,
+  Delete
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

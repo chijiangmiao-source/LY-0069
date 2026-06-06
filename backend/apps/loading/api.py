@@ -2,6 +2,7 @@ from ninja import Router
 from ninja.errors import HttpError
 from typing import List
 from django.db import transaction
+from datetime import date
 
 from .models import LoadingRecord, UnloadingRecord, DamageRecord
 from .schemas import (
@@ -94,6 +95,13 @@ def create_loading(request, data: LoadingIn):
     except Prop.DoesNotExist:
         raise HttpError(400, '道具不存在')
 
+    if prop.scrap_status in ('scrapped', 'approved'):
+        raise HttpError(400, f'道具「{prop.code} {prop.name}」已报废，不可装车')
+
+    today = date.today()
+    if prop.next_maintenance_date and prop.next_maintenance_date < today:
+        raise HttpError(400, f'道具「{prop.code} {prop.name}」维保已超期（下次维保日期: {prop.next_maintenance_date}），请先完成维保后再装车')
+
     loading = LoadingRecord.objects.create(**data.dict())
     loading.vehicle = vehicle
     loading.prop = prop
@@ -139,6 +147,13 @@ def update_loading(request, id: int, data: LoadingIn):
         prop = Prop.objects.get(id=data.prop_id)
     except Prop.DoesNotExist:
         raise HttpError(400, '道具不存在')
+
+    if prop.scrap_status in ('scrapped', 'approved'):
+        raise HttpError(400, f'道具「{prop.code} {prop.name}」已报废，不可装车')
+
+    today = date.today()
+    if prop.next_maintenance_date and prop.next_maintenance_date < today:
+        raise HttpError(400, f'道具「{prop.code} {prop.name}」维保已超期（下次维保日期: {prop.next_maintenance_date}），请先完成维保后再装车')
 
     old_vehicle_id = loading.vehicle_id
     old_prop_id = loading.prop_id

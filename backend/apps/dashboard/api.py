@@ -1,7 +1,8 @@
 from ninja import Router
-from django.db.models import Count
+from django.db.models import Count, Sum, Q
+from datetime import date, timedelta
 
-from .schemas import DashboardData, VehicleLoadRate, ProgramPropDist, TourFlowStats
+from .schemas import DashboardData, VehicleLoadRate, ProgramPropDist, TourFlowStats, MaintenanceStats, HighLossProgram
 from apps.auth_app.auth import JWTAuth
 from apps.vehicles.models import Vehicle
 from apps.props.models import Prop
@@ -10,10 +11,11 @@ router = Router(tags=['数据看板'], auth=JWTAuth())
 
 
 try:
-    from apps.loading.models import LoadingRecord, UnloadingRecord
+    from apps.loading.models import LoadingRecord, UnloadingRecord, DamageRecord
 except ImportError:
     LoadingRecord = None
     UnloadingRecord = None
+    DamageRecord = None
 
 
 @router.get('', response=DashboardData)
@@ -68,8 +70,54 @@ def get_dashboard_data(request):
         total_tour_count=total_tour_count,
     )
 
+    today = date.today()
+    seven_days_later = today + timedelta(days=7)
+    maintenance_due_count = Prop.objects.filter(
+        next_maintenance_date__isnull=False,
+        next_maintenance_date__lte=seven_days_later,
+        next_maintenance_date__gte=today,
+        scrap_status__in=['active', 'pending']
+    ).count()
+    maintenance_overdue_count = Prop.objects.filter(
+        next_maintenance_date__isnull=False,
+        next_maintenance_date__lt=today,
+        scrap_status__in=['active', 'pending']
+    ).count()
+    total_props = Prop.objects.count()
+    scrapped_count = Prop.objects.filter(scrap_status__in=['scrapped', 'approved']).count()
+    scrap_proportion = round(scrapped_count / total_props * 100, 2) if total_props > 0 else 0.0
+
+    maintenance_stats = MaintenanceStats(
+        maintenance_due_count=maintenance_due_count,
+        maintenance_overdue_count=maintenance_overdue_count,
+        scrap_proportion=scrap_proportion,
+    )
+
+    high_loss_programs = []
+    if DamageRecord is not None:
+        try:
+            loss_stats = DamageRecord.objects.values(
+                'prop__program_id__name'
+            ).annotate(
+                total_damage_quantity=Sum('damage_quantity'),
+                damage_count=Count('id')
+            ).order_by('-total_damage_quantity')[:10]
+
+            for item in loss_stats:
+                program_name = item['prop__program_id__name'] or '未分类'
+                prop_count = Prop.objects.filter(program_id__name=program_name).count()
+                high_loss_programs.append(HighLossProgram(
+                    program_name=program_name,
+                    total_damage_quantity=item['total_damage_quantity'] or 0,
+                    prop_count=prop_count,
+                ))
+        except Exception:
+            pass
+
     return DashboardData(
         vehicle_load_rates=vehicle_load_rates,
         program_prop_dist=program_prop_dist,
         tour_flow_stats=tour_flow_stats,
+        maintenance_stats=maintenance_stats,
+        high_loss_programs=high_loss_programs,
     )

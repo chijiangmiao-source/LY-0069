@@ -22,8 +22,43 @@ export interface Prop {
   material: string
   status: string
   location: string
+  maintenance_cycle_days: number
+  last_maintenance_date?: string
+  next_maintenance_date?: string
+  maintenance_status: string
+  scrap_status: string
   created_at: string
   updated_at: string
+}
+
+export interface MaintenanceRecord {
+  id: number
+  prop_id: number
+  prop_code?: string
+  prop_name?: string
+  type: string
+  maintenance_date: string
+  description: string
+  operator: string
+  result: string
+  cost: number
+  remark?: string
+  created_at: string
+}
+
+export interface ScrapApplication {
+  id: number
+  prop_id: number
+  prop_code?: string
+  prop_name?: string
+  applicant: string
+  apply_date: string
+  reason: string
+  status: string
+  approver?: string
+  approve_date?: string
+  approve_remark?: string
+  created_at: string
 }
 
 export interface Vehicle {
@@ -96,8 +131,22 @@ export interface TourFlowStats {
   total_tour_count: number
 }
 
+export interface MaintenanceStats {
+  maintenance_due_count: number
+  maintenance_overdue_count: number
+  scrap_proportion: number
+}
+
+export interface HighLossProgram {
+  program_name: string
+  total_damage_quantity: number
+  prop_count: number
+}
+
 export interface DashboardData {
   vehicle_load_rates: VehicleLoadRate[]
   program_prop_dist: ProgramPropDist[]
   tour_flow_stats: TourFlowStats
+  maintenance_stats: MaintenanceStats
+  high_loss_programs: HighLossProgram[]
 }

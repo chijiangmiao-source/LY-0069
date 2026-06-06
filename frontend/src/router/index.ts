@@ -46,6 +46,16 @@ const routes: RouteRecordRaw[] = [
         path: 'damage',
         name: 'DamageList',
         component: () => import('@/views/DamageList.vue')
+      },
+      {
+        path: 'maintenance',
+        name: 'MaintenanceList',
+        component: () => import('@/views/MaintenanceList.vue')
+      },
+      {
+        path: 'scrap',
+        name: 'ScrapList',
+        component: () => import('@/views/ScrapList.vue')
       }
     ]
   }
