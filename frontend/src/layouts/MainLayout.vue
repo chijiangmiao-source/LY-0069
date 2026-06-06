@@ -53,6 +53,10 @@
           <el-icon><Calendar /></el-icon>
           <span>巡演任务</span>
         </el-menu-item>
+        <el-menu-item index="/tour-settlements">
+          <el-icon><Money /></el-icon>
+          <span>成本与结算</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -86,7 +90,8 @@ import {
   User,
   Tools,
   Delete,
-  Calendar
+  Calendar,
+  Money
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

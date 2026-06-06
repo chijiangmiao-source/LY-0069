@@ -4,7 +4,8 @@ from datetime import date, timedelta
 
 from .schemas import (
     DashboardData, VehicleLoadRate, ProgramPropDist, TourFlowStats,
-    MaintenanceStats, HighLossProgram, TourTaskStats, ProgramScheduleRank
+    MaintenanceStats, HighLossProgram, TourTaskStats, ProgramScheduleRank,
+    TourCostStats, ProgramCostRank
 )
 from apps.auth_app.auth import JWTAuth
 from apps.vehicles.models import Vehicle
@@ -21,9 +22,10 @@ except ImportError:
     DamageRecord = None
 
 try:
-    from apps.tours.models import TourTask
+    from apps.tours.models import TourTask, TourSettlement
 except ImportError:
     TourTask = None
+    TourSettlement = None
 
 
 @router.get('', response=DashboardData)
@@ -161,6 +163,71 @@ def get_dashboard_data(request):
         abnormal_tasks_count=abnormal_tasks_count,
     )
 
+    tour_cost_stats = TourCostStats(
+        total_cost=0,
+        transport_cost=0,
+        labor_cost=0,
+        venue_cost=0,
+        maintenance_cost=0,
+        temporary_purchase_cost=0,
+        abnormal_handling_cost=0,
+        task_count=0,
+        avg_cost_per_task=0,
+        abnormal_cost_ratio=0,
+    )
+    program_cost_rank = []
+
+    if TourSettlement is not None:
+        try:
+            settlement_qs = TourSettlement.objects.filter(
+                settlement_status__in=['submitted', 'confirmed']
+            ).select_related('tour_task', 'tour_task__program')
+
+            agg = settlement_qs.aggregate(
+                total_cost=Sum('total_cost'),
+                transport_cost=Sum('transport_cost'),
+                labor_cost=Sum('labor_cost'),
+                venue_cost=Sum('venue_cost'),
+                maintenance_cost=Sum('maintenance_cost'),
+                temporary_purchase_cost=Sum('temporary_purchase_cost'),
+                abnormal_handling_cost=Sum('abnormal_handling_cost'),
+                task_count=Count('id'),
+            )
+
+            total_cost = float(agg['total_cost'] or 0)
+            abnormal_cost = float(agg['abnormal_handling_cost'] or 0)
+            task_count = agg['task_count'] or 0
+
+            tour_cost_stats = TourCostStats(
+                total_cost=total_cost,
+                transport_cost=float(agg['transport_cost'] or 0),
+                labor_cost=float(agg['labor_cost'] or 0),
+                venue_cost=float(agg['venue_cost'] or 0),
+                maintenance_cost=float(agg['maintenance_cost'] or 0),
+                temporary_purchase_cost=float(agg['temporary_purchase_cost'] or 0),
+                abnormal_handling_cost=abnormal_cost,
+                task_count=task_count,
+                avg_cost_per_task=round(total_cost / task_count, 2) if task_count > 0 else 0,
+                abnormal_cost_ratio=round(abnormal_cost / total_cost * 100, 2) if total_cost > 0 else 0,
+            )
+
+            cost_rank = settlement_qs.values('tour_task__program__name').annotate(
+                total_cost=Sum('total_cost'),
+                task_count=Count('id'),
+            ).order_by('-total_cost')[:10]
+
+            for item in cost_rank:
+                p_total = float(item['total_cost'] or 0)
+                p_count = item['task_count'] or 0
+                program_cost_rank.append(ProgramCostRank(
+                    program_name=item['tour_task__program__name'] or '未分类',
+                    total_cost=p_total,
+                    task_count=p_count,
+                    avg_cost_per_task=round(p_total / p_count, 2) if p_count > 0 else 0,
+                ))
+        except Exception:
+            pass
+
     return DashboardData(
         vehicle_load_rates=vehicle_load_rates,
         program_prop_dist=program_prop_dist,
@@ -169,4 +236,6 @@ def get_dashboard_data(request):
         high_loss_programs=high_loss_programs,
         tour_task_stats=tour_task_stats,
         program_schedule_rank=program_schedule_rank,
+        tour_cost_stats=tour_cost_stats,
+        program_cost_rank=program_cost_rank,
     )

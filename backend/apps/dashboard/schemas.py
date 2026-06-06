@@ -45,6 +45,26 @@ class ProgramScheduleRank(Schema):
     upcoming_count: int
 
 
+class TourCostStats(Schema):
+    total_cost: float
+    transport_cost: float
+    labor_cost: float
+    venue_cost: float
+    maintenance_cost: float
+    temporary_purchase_cost: float
+    abnormal_handling_cost: float
+    task_count: int
+    avg_cost_per_task: float
+    abnormal_cost_ratio: float
+
+
+class ProgramCostRank(Schema):
+    program_name: str
+    total_cost: float
+    task_count: int
+    avg_cost_per_task: float
+
+
 class DashboardData(Schema):
     vehicle_load_rates: List[VehicleLoadRate]
     program_prop_dist: List[ProgramPropDist]
@@ -53,3 +73,5 @@ class DashboardData(Schema):
     high_loss_programs: List[HighLossProgram]
     tour_task_stats: TourTaskStats
     program_schedule_rank: List[ProgramScheduleRank]
+    tour_cost_stats: TourCostStats
+    program_cost_rank: List[ProgramCostRank]

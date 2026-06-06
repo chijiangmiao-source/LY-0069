@@ -135,6 +135,64 @@
       </el-col>
     </el-row>
 
+    <el-row :gutter="20" class="stats-row">
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon :size="36"><Money /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">巡演总成本</div>
+              <div class="stat-value">¥{{ formatMoney(tourCostStats.total_cost) }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon :size="36"><Histogram /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">单场平均成本</div>
+              <div class="stat-value">¥{{ formatMoney(tourCostStats.avg_cost_per_task) }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon abnormal-card-cost-icon">
+              <el-icon :size="36"><WarningFilled /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">异常任务成本占比</div>
+              <div class="stat-value danger-value">{{ tourCostStats.abnormal_cost_ratio }}%</div>
+              <div class="stat-tip" v-if="tourCostStats.abnormal_cost_ratio > 10">
+                ⚠ 异常成本占比较高
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :span="6">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon">
+              <el-icon :size="36"><Tickets /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-label">已结算任务数</div>
+              <div class="stat-value">{{ tourCostStats.task_count }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-row :gutter="20" class="charts-row">
       <el-col :span="12">
         <el-card shadow="hover" class="chart-card">
@@ -180,6 +238,19 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <el-row :gutter="20" class="charts-row">
+      <el-col :span="24">
+        <el-card shadow="hover" class="chart-card">
+          <template #header>
+            <div class="chart-header">
+              <span>高成本剧目排行（Top 10）</span>
+            </div>
+          </template>
+          <div ref="costRankChartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -189,23 +260,26 @@ import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import {
   Upload, Download, Van, Tools, Warning, Delete,
-  Calendar, VideoPlay, WarningFilled
+  Calendar, VideoPlay, WarningFilled, Money, Histogram, Tickets
 } from '@element-plus/icons-vue'
 import { getDashboardData } from '@/api/dashboard'
 import type {
   DashboardData, TourFlowStats, VehicleLoadRate, ProgramPropDist,
-  MaintenanceStats, HighLossProgram, TourTaskStats, ProgramScheduleRank
+  MaintenanceStats, HighLossProgram, TourTaskStats, ProgramScheduleRank,
+  TourCostStats, ProgramCostRank
 } from '@/types'
 
 const barChartRef = ref<HTMLElement | null>(null)
 const pieChartRef = ref<HTMLElement | null>(null)
 const lossChartRef = ref<HTMLElement | null>(null)
 const scheduleChartRef = ref<HTMLElement | null>(null)
+const costRankChartRef = ref<HTMLElement | null>(null)
 
 let barChartInstance: ECharts | null = null
 let pieChartInstance: ECharts | null = null
 let lossChartInstance: ECharts | null = null
 let scheduleChartInstance: ECharts | null = null
+let costRankChartInstance: ECharts | null = null
 
 const tourFlowStats = reactive<TourFlowStats>({
   total_loading_count: 0,
@@ -229,6 +303,24 @@ const vehicleLoadRates = ref<VehicleLoadRate[]>([])
 const programPropDist = ref<ProgramPropDist[]>([])
 const highLossPrograms = ref<HighLossProgram[]>([])
 const programScheduleRank = ref<ProgramScheduleRank[]>([])
+const programCostRank = ref<ProgramCostRank[]>([])
+
+const formatMoney = (v: number) => {
+  return (v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+const tourCostStats = reactive<TourCostStats>({
+  total_cost: 0,
+  transport_cost: 0,
+  labor_cost: 0,
+  venue_cost: 0,
+  maintenance_cost: 0,
+  temporary_purchase_cost: 0,
+  abnormal_handling_cost: 0,
+  task_count: 0,
+  avg_cost_per_task: 0,
+  abnormal_cost_ratio: 0
+})
 
 const initBarChart = () => {
   if (!barChartRef.value) return
@@ -441,11 +533,107 @@ const initScheduleChart = () => {
   scheduleChartInstance.setOption(option)
 }
 
+const initCostRankChart = () => {
+  if (!costRankChartRef.value) return
+  if (!costRankChartInstance) {
+    costRankChartInstance = echarts.init(costRankChartRef.value)
+  }
+
+  const xAxisData = programCostRank.value.map(item => item.program_name)
+  const totalData = programCostRank.value.map(item => item.total_cost)
+  const avgData = programCostRank.value.map(item => item.avg_cost_per_task)
+
+  const option: echarts.EChartsOption = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: any) => {
+        const idx = params[0].dataIndex
+        const p = programCostRank.value[idx]
+        return `
+          <div>剧目：${p.program_name}</div>
+          <div>总成本：¥${formatMoney(p.total_cost)}</div>
+          <div>任务数：${p.task_count}</div>
+          <div>单场平均：¥${formatMoney(p.avg_cost_per_task)}</div>
+        `
+      }
+    },
+    legend: {
+      data: ['总成本', '单场平均成本'],
+      top: 0
+    },
+    grid: {
+      left: '3%', right: '4%', bottom: '3%', top: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: xAxisData.length ? xAxisData : ['暂无数据'],
+      axisLabel: { interval: 0, rotate: 30 }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        name: '总成本（元）',
+        axisLabel: {
+          formatter: (v: any) => {
+            if (v >= 10000) return (v / 10000) + '万'
+            return v
+          }
+        }
+      },
+      {
+        type: 'value',
+        name: '单场平均（元）',
+        axisLabel: {
+          formatter: (v: any) => {
+            if (v >= 10000) return (v / 10000) + '万'
+            return v
+          }
+        }
+      }
+    ],
+    series: [
+      {
+        name: '总成本',
+        type: 'bar',
+        data: totalData.length ? totalData : [0],
+        barWidth: '35%',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#667eea' },
+            { offset: 1, color: '#764ba2' }
+          ])
+        },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: (p: any) => '¥' + formatMoney(p.value)
+        }
+      },
+      {
+        name: '单场平均成本',
+        type: 'line',
+        yAxisIndex: 1,
+        data: avgData.length ? avgData : [0],
+        smooth: true,
+        itemStyle: { color: '#ee0a24' },
+        lineStyle: { width: 3 },
+        symbol: 'circle',
+        symbolSize: 8
+      }
+    ]
+  }
+
+  costRankChartInstance.setOption(option)
+}
+
 const handleResize = () => {
   barChartInstance?.resize()
   pieChartInstance?.resize()
   lossChartInstance?.resize()
   scheduleChartInstance?.resize()
+  costRankChartInstance?.resize()
 }
 
 const fetchData = async () => {
@@ -469,11 +657,26 @@ const fetchData = async () => {
     highLossPrograms.value = data.high_loss_programs
     programScheduleRank.value = data.program_schedule_rank || []
 
+    if (data.tour_cost_stats) {
+      tourCostStats.total_cost = data.tour_cost_stats.total_cost
+      tourCostStats.transport_cost = data.tour_cost_stats.transport_cost
+      tourCostStats.labor_cost = data.tour_cost_stats.labor_cost
+      tourCostStats.venue_cost = data.tour_cost_stats.venue_cost
+      tourCostStats.maintenance_cost = data.tour_cost_stats.maintenance_cost
+      tourCostStats.temporary_purchase_cost = data.tour_cost_stats.temporary_purchase_cost
+      tourCostStats.abnormal_handling_cost = data.tour_cost_stats.abnormal_handling_cost
+      tourCostStats.task_count = data.tour_cost_stats.task_count
+      tourCostStats.avg_cost_per_task = data.tour_cost_stats.avg_cost_per_task
+      tourCostStats.abnormal_cost_ratio = data.tour_cost_stats.abnormal_cost_ratio
+    }
+    programCostRank.value = data.program_cost_rank || []
+
     await nextTick()
     initBarChart()
     initPieChart()
     initLossChart()
     initScheduleChart()
+    initCostRankChart()
   } catch (error) {
     console.error('获取看板数据失败:', error)
   }
@@ -487,9 +690,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
   barChartInstance?.dispose()
-  pieChartInstance?.dispose()
   lossChartInstance?.dispose()
   scheduleChartInstance?.dispose()
+  costRankChartInstance?.dispose()
 })
 </script>
 
@@ -662,6 +865,10 @@ onBeforeUnmount(() => {
   .chart-container {
     height: 350px;
   }
+}
+
+.abnormal-card-cost-icon {
+  background: linear-gradient(135deg, #ff9a44 0%, #fc6076 100%);
 }
 
 @media (max-width: 768px) {

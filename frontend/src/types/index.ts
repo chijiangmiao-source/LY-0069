@@ -191,6 +191,108 @@ export interface ProgramScheduleRank {
   upcoming_count: number
 }
 
+export interface TourCostItem {
+  id: number
+  tour_task_id: number
+  tour_task_name: string
+  cost_type: string
+  cost_type_display: string
+  amount: number
+  description?: string
+  expense_date: string
+  operator?: string
+  receipt_no?: string
+  is_abnormal_cost: boolean
+  abnormal_remark?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TourCostItemPayload {
+  tour_task_id: number | string
+  cost_type: string
+  amount: number
+  description?: string
+  expense_date: string
+  operator?: string
+  receipt_no?: string
+  is_abnormal_cost?: boolean
+  abnormal_remark?: string
+}
+
+export interface TourCostItemUpdatePayload {
+  cost_type: string
+  amount: number
+  description?: string
+  expense_date: string
+  operator?: string
+  receipt_no?: string
+  is_abnormal_cost?: boolean
+  abnormal_remark?: string
+}
+
+export interface TourSettlement {
+  id: number
+  tour_task_id: number
+  tour_task_name: string
+  program_name: string
+  city: string
+  performance_date: string
+  task_status: string
+  settlement_no: string
+  transport_cost: number
+  labor_cost: number
+  venue_cost: number
+  maintenance_cost: number
+  temporary_purchase_cost: number
+  abnormal_handling_cost: number
+  total_cost: number
+  abnormal_cost_note?: string
+  settlement_status: string
+  settler?: string
+  settlement_date?: string
+  remark?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TourSettlementPayload {
+  tour_task_id: number | string
+  remark?: string
+}
+
+export interface TourSettlementSubmitPayload {
+  abnormal_cost_note?: string
+  remark?: string
+}
+
+export interface TourCostStats {
+  total_cost: number
+  transport_cost: number
+  labor_cost: number
+  venue_cost: number
+  maintenance_cost: number
+  temporary_purchase_cost: number
+  abnormal_handling_cost: number
+  task_count: number
+  avg_cost_per_task: number
+  abnormal_cost_ratio: number
+}
+
+export interface ProgramCostRank {
+  program_name: string
+  total_cost: number
+  task_count: number
+  avg_cost_per_task: number
+}
+
+export interface CityCostStat {
+  city: string
+  total_cost: number
+  task_count: number
+  avg_cost_per_task: number
+}
+
 export interface DashboardData {
   vehicle_load_rates: VehicleLoadRate[]
   program_prop_dist: ProgramPropDist[]
@@ -199,4 +301,6 @@ export interface DashboardData {
   high_loss_programs: HighLossProgram[]
   tour_task_stats: TourTaskStats
   program_schedule_rank: ProgramScheduleRank[]
+  tour_cost_stats: TourCostStats
+  program_cost_rank: ProgramCostRank[]
 }
